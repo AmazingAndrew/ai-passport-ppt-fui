@@ -98,8 +98,8 @@ static void status_tick(lv_timer_t *t) {
         }
         if (connected) {
             show_state(s_timer.running ? "LIVE" : "READY",
-                       s_timer.running ? UI_FUI_PPT_TEAL
-                                       : UI_FUI_PPT_CREAM);
+                       s_timer.running ? UI_FUI_PPT_GREEN
+                                       : UI_FUI_PPT_AMBER);
             ui_fui_ppt_set_pairing_blink(s_ui, true);
             if (++s_rssi_div >= 2) {
                 s_rssi_div = 0;

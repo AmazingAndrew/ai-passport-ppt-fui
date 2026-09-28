@@ -25,6 +25,7 @@ LV_FONT_DECLARE(ui_font_kode_regular_13);
 LV_FONT_DECLARE(ui_font_kode_bold_13);
 LV_FONT_DECLARE(ui_font_kode_bold_15);
 LV_FONT_DECLARE(ui_font_kode_bold_21);
+LV_FONT_DECLARE(ui_font_kode_bold_32);
 #endif
 
 typedef struct ui_fui_ppt_s {
@@ -85,6 +86,33 @@ ui_fui_ppt_layout_t ui_fui_ppt_home_layout(void) {
         .hint_bar   = { .x = 0,   .y = 296, .w = 240, .h = 24 },
     };
     return l;
+}
+
+ui_fui_ppt_main_layout_t ui_fui_ppt_main_layout(void) {
+    ui_fui_ppt_layout_t l = ui_fui_ppt_home_layout();
+    int x = l.main_panel.x, y = l.main_panel.y, w = l.main_panel.w;
+    ui_fui_ppt_main_layout_t m = {
+        .timer      = { x + 30,      y + 30, 164, 37 },  /* bold_32 */
+        .prev_arrow = { x + 10,      y + 34,  13, 25 },  /* bold_21 */
+        .next_arrow = { x + w - 22,  y + 34,  13, 25 },
+        .action     = { x + 12,      y + 84, 200, 25 },  /* bold_21 */
+        .state      = { x + 12,      y + 112, 200, 25 },
+    };
+    return m;
+}
+
+ui_fui_ppt_link_layout_t ui_fui_ppt_link_layout(void) {
+    ui_fui_ppt_layout_t l = ui_fui_ppt_home_layout();
+    int x = l.link_panel.x, y = l.link_panel.y;
+    ui_fui_ppt_link_layout_t k = {
+        .host_link    = { x + 12,  y + 8,  60, 13 },  /* regular_11 */
+        .status_dot   = { x + 96,  y + 10,  6,  6 },
+        .status_value = { x + 106, y + 7,  96, 15 },  /* bold_13 */
+        .rssi_label   = { x + 12,  y + 34, 28, 13 },  /* regular_11 */
+        .rssi_value   = { x + 48,  y + 34, 56, 13 },
+        .chart        = { x + 128, y + 32, 80, 18 },
+    };
+    return k;
 }
 
 #ifdef ESP_PLATFORM
@@ -169,8 +197,9 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
     ui_fui_ppt_layout_t l = ui_fui_ppt_home_layout();
     mk_box(ui->screen, l.top_bar.x, l.top_bar.y,
            l.top_bar.w, l.top_bar.h, UI_FUI_PPT_PANEL, LV_OPA_COVER);
-    mk_box(ui->screen, 0, 41, 52, 2, UI_FUI_PPT_ORANGE, LV_OPA_COVER);
-    mk_box(ui->screen, 56, 41, 184, 2, UI_FUI_PPT_CREAM, LV_OPA_80);
+    mk_box(ui->screen, 0, 41, 40, 2, UI_FUI_PPT_ORANGE, LV_OPA_COVER);
+    mk_box(ui->screen, 44, 41, 40, 2, UI_FUI_PPT_TEAL, LV_OPA_80);
+    mk_box(ui->screen, 88, 41, 152, 2, UI_FUI_PPT_CREAM, LV_OPA_80);
 
     /* Bluetooth rune drawn as one polyline: Kode Mono has no U+1F48F/ᛒ
      * glyph, and a vector stroke matches the FUI wireframe style. */
@@ -215,75 +244,74 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
              l.main_panel.y + 6, &ui_font_kode_regular_11,
              UI_FUI_PPT_MUTED);
 
-    ui->prev_arrow = mk_label(ui->screen, "<", l.main_panel.x + 12,
-                              l.main_panel.y + 40, &ui_font_kode_bold_21,
+    ui_fui_ppt_main_layout_t m = ui_fui_ppt_main_layout();
+    ui->prev_arrow = mk_label(ui->screen, "<", m.prev_arrow.x,
+                              m.prev_arrow.y, &ui_font_kode_bold_21,
                               UI_FUI_PPT_ORANGE);
     ui->timer_label = mk_label(ui->screen, "00:00",
-                                l.main_panel.x + 60, l.main_panel.y + 44,
-                                &ui_font_kode_bold_21, UI_FUI_PPT_TEAL);
-    lv_obj_set_width(ui->timer_label, 100);
+                                m.timer.x, m.timer.y,
+                                &ui_font_kode_bold_32, UI_FUI_PPT_TEAL);
+    lv_obj_set_width(ui->timer_label, m.timer.w);
     lv_obj_set_style_text_align(ui->timer_label, LV_TEXT_ALIGN_CENTER, 0);
-    ui->next_arrow = mk_label(ui->screen, ">",
-                              l.main_panel.x + l.main_panel.w - 24,
-                              l.main_panel.y + 40, &ui_font_kode_bold_21,
+    ui->next_arrow = mk_label(ui->screen, ">", m.next_arrow.x,
+                              m.next_arrow.y, &ui_font_kode_bold_21,
                               UI_FUI_PPT_ORANGE);
 
     ui->action_label = mk_label(ui->screen, "STANDBY",
-                                l.main_panel.x + 12, l.main_panel.y + 84,
-                                &ui_font_kode_bold_15, UI_FUI_PPT_MUTED);
-    lv_obj_set_width(ui->action_label, l.main_panel.w - 24);
+                                m.action.x, m.action.y,
+                                &ui_font_kode_bold_21, UI_FUI_PPT_MUTED);
+    lv_obj_set_width(ui->action_label, m.action.w);
     lv_obj_set_style_text_align(ui->action_label, LV_TEXT_ALIGN_CENTER, 0);
 
     ui->state_label = mk_label(ui->screen, "PAIRING",
-                                l.main_panel.x + 12,
-                                l.main_panel.y + 110,
-                                &ui_font_kode_bold_15, UI_FUI_PPT_MAGENTA);
-    lv_obj_set_width(ui->state_label, l.main_panel.w - 24);
+                                m.state.x, m.state.y,
+                                &ui_font_kode_bold_21, UI_FUI_PPT_MAGENTA);
+    lv_obj_set_width(ui->state_label, m.state.w);
     lv_obj_set_style_text_align(ui->state_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    /* link panel */
+    /* link panel — two clearly separated rows to avoid the v0.2.0 label
+     * collision: row A carries the link status, row B carries RSSI + a
+     * small, low-key signal sparkline. Positions come from the tested
+     * ui_fui_ppt_link_layout() math. */
     mk_box(ui->screen, l.link_panel.x, l.link_panel.y,
            l.link_panel.w, l.link_panel.h,
            UI_FUI_PPT_PANEL_ALT, LV_OPA_COVER);
-    mk_label(ui->screen, "HOST LINK", l.link_panel.x + 12,
-             l.link_panel.y + 4, &ui_font_kode_regular_11,
-             UI_FUI_PPT_MUTED);
-    mk_label(ui->screen, "RSSI", l.link_panel.x + 12,
-             l.link_panel.y + 14, &ui_font_kode_regular_11,
-             UI_FUI_PPT_MUTED);
-    ui->rssi_value = mk_label(ui->screen, "-- dBm", l.link_panel.x + 46,
-                              l.link_panel.y + 14, &ui_font_kode_regular_11,
-                              UI_FUI_PPT_TEXT);
-
-    ui->link_dot = mk_box(ui->screen, l.link_panel.x + 80,
-                          l.link_panel.y + 10, 6, 6,
+    ui_fui_ppt_link_layout_t k = ui_fui_ppt_link_layout();
+    /* row A: HOST LINK + status */
+    mk_label(ui->screen, "HOST LINK", k.host_link.x, k.host_link.y,
+             &ui_font_kode_regular_11, UI_FUI_PPT_MUTED);
+    ui->link_dot = mk_box(ui->screen, k.status_dot.x, k.status_dot.y,
+                          k.status_dot.w, k.status_dot.h,
                           UI_FUI_PPT_MAGENTA, LV_OPA_COVER);
     lv_obj_set_style_radius(ui->link_dot, LV_RADIUS_CIRCLE, 0);
     ui->link_value = mk_label(ui->screen, "PAIRING",
-                              l.link_panel.x + 92, l.link_panel.y + 6,
+                              k.status_value.x, k.status_value.y,
                               &ui_font_kode_bold_13, UI_FUI_PPT_MAGENTA);
+    /* row B: RSSI value + compact sparkline */
+    mk_label(ui->screen, "RSSI", k.rssi_label.x, k.rssi_label.y,
+             &ui_font_kode_regular_11, UI_FUI_PPT_MUTED);
+    ui->rssi_value = mk_label(ui->screen, "-- dBm",
+                              k.rssi_value.x, k.rssi_value.y,
+                              &ui_font_kode_regular_11, UI_FUI_PPT_MUTED);
 
     ui->link_chart = lv_chart_create(ui->screen);
     lv_obj_remove_flag(ui->link_chart, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_pos(ui->link_chart, l.link_panel.x + 80,
-                   l.link_panel.y + 26);
-    lv_obj_set_size(ui->link_chart, 120, 28);
+    lv_obj_set_pos(ui->link_chart, k.chart.x, k.chart.y);
+    lv_obj_set_size(ui->link_chart, k.chart.w, k.chart.h);
     lv_obj_set_style_pad_all(ui->link_chart, 0, 0);
     lv_obj_set_style_radius(ui->link_chart, 0, 0);
-    lv_obj_set_style_bg_color(ui->link_chart,
-                              lv_color_hex(UI_FUI_PPT_RUST), 0);
-    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_10, 0);
+    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(ui->link_chart, 0, 0);
     lv_obj_set_style_line_opa(ui->link_chart, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_COVER, LV_PART_ITEMS);
+    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_50, LV_PART_ITEMS);
     lv_obj_set_style_radius(ui->link_chart, 0, LV_PART_ITEMS);
     lv_chart_set_type(ui->link_chart, LV_CHART_TYPE_BAR);
-    lv_chart_set_point_count(ui->link_chart, 8);
+    lv_chart_set_point_count(ui->link_chart, 6);
     lv_chart_set_axis_range(ui->link_chart, LV_CHART_AXIS_PRIMARY_Y,
-                            -100, -30);
+                            -100, -40);
     lv_chart_set_div_line_count(ui->link_chart, 0, 0);
     ui->link_series = lv_chart_add_series(ui->link_chart,
-                                          lv_color_hex(UI_FUI_PPT_TEAL),
+                                          lv_color_hex(UI_FUI_PPT_BLUE),
                                           LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_set_all_values(ui->link_chart, ui->link_series,
                             LV_CHART_POINT_NONE);
@@ -430,18 +458,21 @@ void ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int soc) {
 
 void ui_fui_ppt_set_rssi(ui_fui_ppt_t *ui, int rssi_dbm) {
     if (!ui) return;
+    bool valid = (rssi_dbm >= -100 && rssi_dbm <= -1);
     if (ui->rssi_value) {
         char buf[12];
-        if (rssi_dbm >= -100 && rssi_dbm <= 0)
-            snprintf(buf, sizeof(buf), "%d dBm", rssi_dbm);
-        else
-            snprintf(buf, sizeof(buf), "-- dBm");
+        if (valid) snprintf(buf, sizeof(buf), "%d dBm", rssi_dbm);
+        else       snprintf(buf, sizeof(buf), "-- dBm");
         lv_label_set_text(ui->rssi_value, buf);
+        uint32_t c = !valid            ? UI_FUI_PPT_MUTED
+                   : rssi_dbm >= -55   ? UI_FUI_PPT_TEAL
+                   : rssi_dbm >= -75   ? UI_FUI_PPT_AMBER
+                                       : UI_FUI_PPT_RED;
+        lv_obj_set_style_text_color(ui->rssi_value, lv_color_hex(c), 0);
     }
     if (ui->link_chart && ui->link_series) {
         lv_chart_set_next_value(ui->link_chart, ui->link_series,
-                                (rssi_dbm >= -100 && rssi_dbm <= 0)
-                                    ? rssi_dbm : LV_CHART_POINT_NONE);
+                                valid ? rssi_dbm : LV_CHART_POINT_NONE);
     }
 }
 

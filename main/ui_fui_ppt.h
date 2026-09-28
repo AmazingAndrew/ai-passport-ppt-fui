@@ -20,6 +20,8 @@
 #define UI_FUI_PPT_MAGENTA      0xC43D1BU
 #define UI_FUI_PPT_AMBER        0xFF9B35U
 #define UI_FUI_PPT_RED          0xFF4D6DU
+#define UI_FUI_PPT_GREEN        0x57C775U
+#define UI_FUI_PPT_BLUE         0x4F8FE0U
 #define UI_FUI_PPT_TEXT         UI_FUI_PPT_CREAM
 #define UI_FUI_PPT_MUTED        0x829097U
 
@@ -52,10 +54,33 @@ typedef struct {
     ui_fui_ppt_layout_rect_t hint_bar;
 } ui_fui_ppt_layout_t;
 
+/* Internal widget rects (screen coordinates) for the two content panels.
+ * Exposed as pure layout math so the host test can prove no element
+ * overlaps or leaves its panel; the ESP build consumes these to place the
+ * real LVGL objects, keeping test and firmware on one source of truth. */
+typedef struct {
+    ui_fui_ppt_layout_rect_t timer;
+    ui_fui_ppt_layout_rect_t prev_arrow;
+    ui_fui_ppt_layout_rect_t next_arrow;
+    ui_fui_ppt_layout_rect_t action;
+    ui_fui_ppt_layout_rect_t state;
+} ui_fui_ppt_main_layout_t;
+
+typedef struct {
+    ui_fui_ppt_layout_rect_t host_link;
+    ui_fui_ppt_layout_rect_t status_dot;
+    ui_fui_ppt_layout_rect_t status_value;
+    ui_fui_ppt_layout_rect_t rssi_label;
+    ui_fui_ppt_layout_rect_t rssi_value;
+    ui_fui_ppt_layout_rect_t chart;
+} ui_fui_ppt_link_layout_t;
+
 typedef struct ui_fui_ppt_s ui_fui_ppt_t;
 
 ui_fui_ppt_layout_t    ui_fui_ppt_home_layout(void);
 ui_fui_ppt_layout_rect_t ui_fui_ppt_menu_row_rect(unsigned index);
+ui_fui_ppt_main_layout_t ui_fui_ppt_main_layout(void);
+ui_fui_ppt_link_layout_t ui_fui_ppt_link_layout(void);
 
 ui_fui_ppt_t          *ui_fui_ppt_create(void);
 void                   ui_fui_ppt_destroy(ui_fui_ppt_t *ui);

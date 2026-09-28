@@ -25,6 +25,7 @@ set(common_srcs
     "fonts/kode_mono/ui_font_kode_bold_13.c"
     "fonts/kode_mono/ui_font_kode_bold_15.c"
     "fonts/kode_mono/ui_font_kode_bold_21.c"
+    "fonts/kode_mono/ui_font_kode_bold_32.c"
 )
 
 if(CONFIG_APP_PPT_ENABLED)

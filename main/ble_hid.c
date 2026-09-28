@@ -438,6 +438,7 @@ bool ble_hid_poll_rssi(int8_t *rssi_out)
         return false;
     }
     int8_t sample = s_rssi;
+    *rssi_out = sample;
     return sample != 127 && sample != 0;
 }
 
