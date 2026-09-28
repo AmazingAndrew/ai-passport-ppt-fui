@@ -1,5 +1,9 @@
 # PPT Controller FUI Implementation Plan
 
+<p align="right">
+  <a href="2026-09-28-ppt-controller-fui.zh_CN.md">简体中文</a> · <strong>English</strong>
+</p>
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a BLE HID Keyboard PPT remote control application on FoloToy AI Passport with a FUI-styled interface, and ship it as a merged `build/FoloToy-AI-Passport-full.bin` flashable at `0x0`.
@@ -113,7 +117,7 @@ If not authenticated, run `gh auth login` and follow the prompts. Do not proceed
 
 - [ ] **Step 5: Create the new GitHub repo**
 
-The user chose "新建仓库" for delivery. Default name: `ai-passport-ppt-fui`. Adjust if the user already named one.
+The user chose "Create a new repo" for delivery. Default name: `ai-passport-ppt-fui`. Adjust if the user already named one.
 
 Run:
 ```bash
@@ -222,7 +226,7 @@ Open `/c/Users/Administrator/Desktop/PPT controller/ai-passport-base/assets/READ
 
 Third-party material used by this firmware.
 
-- [Kode Mono](fonts/kode_mono/README.md) — fonts used by the FUI layout.
+- [Kode Mono](/assets/fonts/kode_mono/README.md) — fonts used by the FUI layout.
 ```
 
 - [ ] **Step 6: Commit**

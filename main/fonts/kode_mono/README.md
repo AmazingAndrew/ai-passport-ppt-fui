@@ -1,3 +1,7 @@
+<p align="right">
+  <a href="README.zh_CN.md">简体中文</a> · <strong>English</strong>
+</p>
+
 # Kode Mono UI fonts
 
 Source: <https://github.com/isaozler/kode-mono>
