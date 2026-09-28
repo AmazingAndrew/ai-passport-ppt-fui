@@ -36,5 +36,5 @@ endif()
 idf_component_register(
     SRCS ${component_srcs}
     INCLUDE_DIRS "."
-    REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
+    REQUIRES bsp bt esp_event esp_hw_support esp_hid esp_netif esp_timer esp_wifi nvs_flash
 )
