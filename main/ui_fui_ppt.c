@@ -14,6 +14,7 @@
 
 #include "ui_fui_ppt.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,8 +35,8 @@ typedef struct ui_fui_ppt_s {
 
     /* home */
     lv_obj_t *title_label;
-    lv_obj_t *code_top;
-    lv_obj_t *code_bottom;
+    lv_obj_t *bt_glyph;           /* vector Bluetooth rune, status lamp */
+    lv_obj_t *battery_pct;
     lv_obj_t *battery_segments[5];
     lv_obj_t *state_label;        /* big state word */
     lv_obj_t *action_label;       /* last-action feedback */
@@ -44,6 +45,7 @@ typedef struct ui_fui_ppt_s {
     lv_obj_t *next_arrow;
     lv_obj_t *link_dot;
     lv_obj_t *link_value;
+    lv_obj_t *rssi_value;
     lv_obj_t *link_chart;
     lv_chart_series_t *link_series;
     lv_obj_t *hint_label;
@@ -169,24 +171,32 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
            l.top_bar.w, l.top_bar.h, UI_FUI_PPT_PANEL, LV_OPA_COVER);
     mk_box(ui->screen, 0, 41, 52, 2, UI_FUI_PPT_ORANGE, LV_OPA_COVER);
     mk_box(ui->screen, 56, 41, 184, 2, UI_FUI_PPT_CREAM, LV_OPA_80);
-    ui->code_top = mk_box(ui->screen, 8, 5, 31, 15,
-                          UI_FUI_PPT_RUST, LV_OPA_COVER);
-    ui->code_bottom = mk_box(ui->screen, 8, 21, 31, 15,
-                             UI_FUI_PPT_ORANGE, LV_OPA_COVER);
-    mk_label(ui->code_top, "02", 0, 0,
-             &ui_font_kode_bold_13, UI_FUI_PPT_CREAM);
-    lv_obj_center(lv_obj_get_child(ui->code_top, 0));
-    mk_label(ui->code_bottom, "BT", 0, 0,
-             &ui_font_kode_bold_13, UI_FUI_PPT_CREAM);
-    lv_obj_center(lv_obj_get_child(ui->code_bottom, 0));
+
+    /* Bluetooth rune drawn as one polyline: Kode Mono has no U+1F48F/ᛒ
+     * glyph, and a vector stroke matches the FUI wireframe style. */
+    static lv_point_precise_t bt_pts[] = {
+        { 1, 6 }, { 11, 14 }, { 6, 18 }, { 6, 2 }, { 11, 6 }, { 1, 14 },
+    };
+    ui->bt_glyph = lv_line_create(ui->screen);
+    lv_line_set_points(ui->bt_glyph, bt_pts, 6);
+    lv_obj_set_pos(ui->bt_glyph, 10, 12);
+    lv_obj_set_style_line_width(ui->bt_glyph, 2, 0);
+    lv_obj_set_style_line_rounded(ui->bt_glyph, true, 0);
+    lv_obj_set_style_line_color(ui->bt_glyph,
+                                lv_color_hex(UI_FUI_PPT_ORANGE), 0);
 
     ui->title_label = mk_label(ui->screen, "PPT CTRL", 49, 5,
                               &ui_font_kode_bold_15, UI_FUI_PPT_TEXT);
     mk_label(ui->screen, "BLE HID REMOTE", 49, 23,
              &ui_font_kode_regular_11, UI_FUI_PPT_MUTED);
 
-    /* battery segments — 5 cells, right-aligned in top bar */
+    /* battery: percent text + 5 segment cells, right-aligned in top bar */
     const int batt_total_w = 5 * 9 + 4 * 3;
+    ui->battery_pct = mk_label(ui->screen, "--%",
+                               240 - 8 - batt_total_w - 30, 15,
+                               &ui_font_kode_regular_11, UI_FUI_PPT_TEXT);
+    lv_obj_set_width(ui->battery_pct, 26);
+    lv_obj_set_style_text_align(ui->battery_pct, LV_TEXT_ALIGN_RIGHT, 0);
     for (unsigned i = 0; i < 5; i++) {
         int x = 240 - 8 - batt_total_w + (int)i * (9 + 3);
         ui->battery_segments[i] = mk_box(ui->screen, x, 16, 9, 9,
@@ -201,11 +211,8 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
            UI_FUI_PPT_RUST, LV_OPA_COVER);
     mk_box(ui->screen, l.main_panel.x + 4, l.main_panel.y + 22, 1, 134,
            UI_FUI_PPT_ORANGE, LV_OPA_70);
-    mk_label(ui->screen, "SLIDE FLOW", l.main_panel.x + 12,
-             l.main_panel.y + 4, &ui_font_kode_regular_11,
-             UI_FUI_PPT_MUTED);
-    mk_label(ui->screen, "MOTION SIGNATURE", l.main_panel.x + 12,
-             l.main_panel.y + 14, &ui_font_kode_regular_11,
+    mk_label(ui->screen, "SLIDE CONTROL", l.main_panel.x + 12,
+             l.main_panel.y + 6, &ui_font_kode_regular_11,
              UI_FUI_PPT_MUTED);
 
     ui->prev_arrow = mk_label(ui->screen, "<", l.main_panel.x + 12,
@@ -227,7 +234,7 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
     lv_obj_set_width(ui->action_label, l.main_panel.w - 24);
     lv_obj_set_style_text_align(ui->action_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    ui->state_label = mk_label(ui->screen, "PAIR with PPT-Remote",
+    ui->state_label = mk_label(ui->screen, "PAIRING",
                                 l.main_panel.x + 12,
                                 l.main_panel.y + 110,
                                 &ui_font_kode_bold_15, UI_FUI_PPT_MAGENTA);
@@ -244,6 +251,9 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
     mk_label(ui->screen, "RSSI", l.link_panel.x + 12,
              l.link_panel.y + 14, &ui_font_kode_regular_11,
              UI_FUI_PPT_MUTED);
+    ui->rssi_value = mk_label(ui->screen, "-- dBm", l.link_panel.x + 46,
+                              l.link_panel.y + 14, &ui_font_kode_regular_11,
+                              UI_FUI_PPT_TEXT);
 
     ui->link_dot = mk_box(ui->screen, l.link_panel.x + 80,
                           l.link_panel.y + 10, 6, 6,
@@ -383,10 +393,19 @@ void ui_fui_ppt_set_link(ui_fui_ppt_t *ui, const char *text, uint32_t color) {
     if (ui->link_dot) {
         lv_obj_set_style_bg_color(ui->link_dot, lv_color_hex(color), 0);
     }
+    if (ui->bt_glyph) {
+        lv_obj_set_style_line_color(ui->bt_glyph, lv_color_hex(color), 0);
+    }
 }
 
 void ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int soc) {
     if (!ui) return;
+    if (ui->battery_pct) {
+        char pct[8];
+        if (soc < 0 || soc > 100) snprintf(pct, sizeof(pct), "--%%");
+        else                       snprintf(pct, sizeof(pct), "%d%%", soc);
+        lv_label_set_text(ui->battery_pct, pct);
+    }
     if (soc < 0 || soc > 100) {
         for (unsigned i = 0; i < 5; i++) {
             lv_obj_set_style_bg_color(ui->battery_segments[i],
@@ -407,6 +426,42 @@ void ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int soc) {
         lv_obj_set_style_bg_opa(ui->battery_segments[i],
             on ? LV_OPA_COVER : LV_OPA_40, 0);
     }
+}
+
+void ui_fui_ppt_set_rssi(ui_fui_ppt_t *ui, int rssi_dbm) {
+    if (!ui) return;
+    if (ui->rssi_value) {
+        char buf[12];
+        if (rssi_dbm >= -100 && rssi_dbm <= 0)
+            snprintf(buf, sizeof(buf), "%d dBm", rssi_dbm);
+        else
+            snprintf(buf, sizeof(buf), "-- dBm");
+        lv_label_set_text(ui->rssi_value, buf);
+    }
+    if (ui->link_chart && ui->link_series) {
+        lv_chart_set_next_value(ui->link_chart, ui->link_series,
+                                (rssi_dbm >= -100 && rssi_dbm <= 0)
+                                    ? rssi_dbm : LV_CHART_POINT_NONE);
+    }
+}
+
+void ui_fui_ppt_set_pairing_blink(ui_fui_ppt_t *ui, bool bright) {
+    if (!ui) return;
+    lv_opa_t opa = bright ? LV_OPA_COVER : LV_OPA_30;
+    if (ui->bt_glyph)
+        lv_obj_set_style_line_opa(ui->bt_glyph, opa, 0);
+    if (ui->link_dot)
+        lv_obj_set_style_bg_opa(ui->link_dot, opa, 0);
+    if (ui->link_value)
+        lv_obj_set_style_text_opa(ui->link_value, opa, 0);
+}
+
+void ui_fui_ppt_set_arrow(ui_fui_ppt_t *ui, bool prev, bool active) {
+    if (!ui) return;
+    lv_obj_t *arrow = prev ? ui->prev_arrow : ui->next_arrow;
+    if (!arrow) return;
+    lv_obj_set_style_text_color(arrow, lv_color_hex(
+        active ? UI_FUI_PPT_CREAM : UI_FUI_PPT_ORANGE), 0);
 }
 
 void ui_fui_ppt_set_visible(ui_fui_ppt_t *ui, ui_fui_ppt_view_t view) {
@@ -448,5 +503,8 @@ void           ui_fui_ppt_set_state_color(ui_fui_ppt_t *ui, uint32_t c) { (void)
 void           ui_fui_ppt_set_timer(ui_fui_ppt_t *ui, const char *s) { (void)ui; (void)s; }
 void           ui_fui_ppt_set_link(ui_fui_ppt_t *ui, const char *s, uint32_t c) { (void)ui; (void)s; (void)c; }
 void           ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int s) { (void)ui; (void)s; }
+void           ui_fui_ppt_set_rssi(ui_fui_ppt_t *ui, int r) { (void)ui; (void)r; }
+void           ui_fui_ppt_set_pairing_blink(ui_fui_ppt_t *ui, bool b) { (void)ui; (void)b; }
+void           ui_fui_ppt_set_arrow(ui_fui_ppt_t *ui, bool p, bool a) { (void)ui; (void)p; (void)a; }
 void           ui_fui_ppt_set_visible(ui_fui_ppt_t *ui, ui_fui_ppt_view_t v) { (void)ui; (void)v; }
 #endif

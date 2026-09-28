@@ -37,29 +37,32 @@ static TickType_t     s_reset_arm_tick = 0;
 static lv_timer_t    *s_status_timer = NULL;
 static lv_timer_t    *s_ppt_timer = NULL;
 
+/* animation state, all advanced by the 500 ms status tick */
+static bool      s_blink_half = false;
+static bool      s_connected_shown = false;
+static const char *s_state_shown = NULL;
+static unsigned  s_rssi_div = 0;
+static uint8_t   s_arrow_ticks = 0;
+static bool      s_arrow_prev = false;
+
 static void update_action(ui_fui_ppt_action_t a) {
     if (!bsp_lvgl_lock(500)) return;
     ui_fui_ppt_set_action(s_ui, a);
     bsp_lvgl_unlock();
 }
 
-static void update_state(const char *text, uint32_t color) {
+static void flash_arrow(bool prev) {
     if (!bsp_lvgl_lock(500)) return;
-    ui_fui_ppt_set_state(s_ui, text);
-    if (s_ui) {
-        /* best-effort color on the state label: re-use set_link for the dot,
-         * but the state label itself takes raw lv color via a small helper */
-        extern void ui_fui_ppt_set_state_color(ui_fui_ppt_t *, uint32_t);
-        ui_fui_ppt_set_state_color(s_ui, color);
-    }
+    ui_fui_ppt_set_arrow(s_ui, prev, true);
     bsp_lvgl_unlock();
+    s_arrow_prev = prev;
+    s_arrow_ticks = 2; /* ~1 s, cleared in status_tick */
 }
 
-/* status_tick is an LVGL timer callback, so it runs inside the LVGL task and
- * does not need to lock. It just repaints the state-label color in step with
- * the link-panel dot. */
-static void update_state_color_only(uint32_t color) {
-    if (!s_ui) return;
+static void show_state(const char *text, uint32_t color) {
+    if (s_state_shown == text) return;
+    s_state_shown = text;
+    ui_fui_ppt_set_state(s_ui, text);
     ui_fui_ppt_set_state_color(s_ui, color);
 }
 
@@ -67,30 +70,53 @@ static void update_timer_label(void) {
     if (!bsp_lvgl_lock(500)) return;
     char buf[16];
     if (ppt_timer_format(&s_timer, buf, sizeof(buf))) {
+        if (s_timer.running && s_blink_half) {
+            for (char *p = buf; *p; p++) {
+                if (*p == ':') *p = ' ';
+            }
+        }
         ui_fui_ppt_set_timer(s_ui, buf);
     }
     bsp_lvgl_unlock();
 }
 
+/* status_tick is an LVGL timer callback: it runs inside the LVGL task, so
+ * the ui_fui_ppt_* calls below need no lock. */
 static void status_tick(lv_timer_t *t) {
     (void)t;
-    int soc = bsp_battery_soc();
-    if (s_ui) ui_fui_ppt_set_battery(s_ui, soc);
+    s_blink_half = !s_blink_half;
 
-    if (ble_hid_is_connected()) {
-        char peer[20];
-        char buf[32];
-        if (ble_hid_get_peer_str(peer, sizeof(peer))) {
-            snprintf(buf, sizeof(buf), "LINK %s", peer);
-        } else {
-            snprintf(buf, sizeof(buf), "LINK ACTIVE");
+    if (s_ui) ui_fui_ppt_set_battery(s_ui, bsp_battery_soc());
+
+    bool connected = ble_hid_is_connected();
+    if (s_ui) {
+        if (connected != s_connected_shown) {
+            s_connected_shown = connected;
+            ui_fui_ppt_set_link(s_ui,
+                connected ? "PC CONNECTED" : "PAIRING",
+                connected ? UI_FUI_PPT_TEAL : UI_FUI_PPT_MAGENTA);
         }
-        if (s_ui) ui_fui_ppt_set_link(s_ui, buf, UI_FUI_PPT_TEAL);
-        if (s_ui) update_state_color_only(UI_FUI_PPT_TEAL);
-    } else {
-        if (s_ui) ui_fui_ppt_set_link(s_ui, "PAIR with PPT-Remote",
-                                      UI_FUI_PPT_MAGENTA);
-        if (s_ui) update_state_color_only(UI_FUI_PPT_MAGENTA);
+        if (connected) {
+            show_state(s_timer.running ? "LIVE" : "READY",
+                       s_timer.running ? UI_FUI_PPT_TEAL
+                                       : UI_FUI_PPT_CREAM);
+            ui_fui_ppt_set_pairing_blink(s_ui, true);
+            if (++s_rssi_div >= 2) {
+                s_rssi_div = 0;
+                int8_t rssi = 0;
+                ui_fui_ppt_set_rssi(s_ui,
+                                    ble_hid_poll_rssi(&rssi) ? rssi : 1);
+            }
+        } else {
+            s_rssi_div = 0;
+            show_state("PAIRING", UI_FUI_PPT_MAGENTA);
+            ui_fui_ppt_set_pairing_blink(s_ui, s_blink_half);
+            ui_fui_ppt_set_rssi(s_ui, 1); /* invalid -> "-- dBm" + gap */
+        }
+        if (s_arrow_ticks > 0 && --s_arrow_ticks == 0) {
+            ui_fui_ppt_set_arrow(s_ui, s_arrow_prev, false);
+        }
+        if (s_timer.running) update_timer_label();  /* drives colon blink */
     }
 }
 
@@ -113,6 +139,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
             } else {
                 ble_hid_key_press(HID_KEY_LEFT_ARROW);
                 update_action(UI_FUI_PPT_ACTION_PREV);
+                flash_arrow(true);
             }
         } else if (ev == BSP_BTN_LONG) {
             s_reset_arm_tick = now;
@@ -126,6 +153,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
             } else {
                 ble_hid_key_press(HID_KEY_RIGHT_ARROW);
                 update_action(UI_FUI_PPT_ACTION_NEXT);
+                flash_arrow(false);
             }
         } else if (ev == BSP_BTN_LONG) {
             if (s_reset_arm_tick != 0 &&

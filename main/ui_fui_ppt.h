@@ -71,5 +71,10 @@ void                   ui_fui_ppt_set_timer(ui_fui_ppt_t *ui,
 void                   ui_fui_ppt_set_link(ui_fui_ppt_t *ui,
                                            const char *text, uint32_t color);
 void                   ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int soc);
+void                   ui_fui_ppt_set_rssi(ui_fui_ppt_t *ui, int rssi_dbm);
+void                   ui_fui_ppt_set_pairing_blink(ui_fui_ppt_t *ui,
+                                                    bool bright);
+void                   ui_fui_ppt_set_arrow(ui_fui_ppt_t *ui, bool prev,
+                                            bool active);
 void                   ui_fui_ppt_set_visible(ui_fui_ppt_t *ui,
                                              ui_fui_ppt_view_t view);

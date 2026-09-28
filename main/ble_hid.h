@@ -8,6 +8,7 @@
 #include "esp_err.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @brief 初始化 BLE HID Keyboard 服务
@@ -49,12 +50,11 @@ void ble_hid_press_start_slideshow(void);
 bool ble_hid_is_connected(void);
 
 /**
- * @brief 获取已连接设备的 MAC 地址字符串（用于 UI 显示）
- * @param buf 输出缓冲区
- * @param len 缓冲区长度（建议 >= 18）
- * @return true 已连接并写入，false 未连接
+ * @brief 触发一次对端 RSSI 读取并返回上一个有效样本（用于 UI 每秒轮询）
+ * @param rssi_out 输出 dBm 值（-127..20，来自上次完成事件）
+ * @return true 已连接且有有效样本；false 未连接或尚无样本
  */
-bool ble_hid_get_peer_str(char *buf, size_t len);
+bool ble_hid_poll_rssi(int8_t *rssi_out);
 
 /**
  * @brief 停止 BLE HID 服务（停止广播，不卸载协议栈）

@@ -117,6 +117,7 @@ static volatile bool s_connected = false;   // HID 层已连接
 static volatile bool s_auth_ok = false;     // 配对认证完成（Windows 要求加密）
 static esp_bd_addr_t s_peer_bda;
 static volatile bool s_peer_valid = false;
+static volatile int8_t s_rssi = 127; /* 127 = no sample yet (BT spec value) */
 
 // ================================================================
 // BLE GAP 事件（配对认证 / 广播）
@@ -138,6 +139,13 @@ static void ble_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_p
             s_auth_ok = true;
             memcpy(s_peer_bda, param->ble_security.auth_cmpl.bd_addr, sizeof(esp_bd_addr_t));
             s_peer_valid = true;
+            s_rssi = 127;
+        }
+        break;
+
+    case ESP_GAP_BLE_READ_RSSI_COMPLETE_EVT:
+        if (param->read_rssi_cmpl.status == ESP_BT_STATUS_SUCCESS) {
+            s_rssi = param->read_rssi_cmpl.rssi;
         }
         break;
 
@@ -419,15 +427,18 @@ bool ble_hid_is_connected(void)
     return s_connected && s_auth_ok;
 }
 
-bool ble_hid_get_peer_str(char *buf, size_t len)
+bool ble_hid_poll_rssi(int8_t *rssi_out)
 {
-    if (!s_connected || !s_peer_valid || buf == NULL || len < 18) {
+    if (!ble_hid_is_connected() || !s_peer_valid || rssi_out == NULL) {
         return false;
     }
-    snprintf(buf, len, "%02X:%02X:%02X:%02X:%02X:%02X",
-             s_peer_bda[0], s_peer_bda[1], s_peer_bda[2],
-             s_peer_bda[3], s_peer_bda[4], s_peer_bda[5]);
-    return true;
+    esp_err_t err = esp_ble_gap_read_rssi(s_peer_bda);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "read_rssi failed: %s", esp_err_to_name(err));
+        return false;
+    }
+    int8_t sample = s_rssi;
+    return sample != 127 && sample != 0;
 }
 
 void ble_hid_reset_bonding(void)
