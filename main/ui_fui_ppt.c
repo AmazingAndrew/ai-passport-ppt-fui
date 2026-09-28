@@ -14,6 +14,7 @@
 
 #include "ui_fui_ppt.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef ESP_PLATFORM
@@ -148,9 +149,8 @@ static const char *action_text(ui_fui_ppt_action_t a) {
 /* ============================================================ */
 
 ui_fui_ppt_t *ui_fui_ppt_create(void) {
-    ui_fui_ppt_t *ui = lv_mem_alloc(sizeof *ui);
+    ui_fui_ppt_t *ui = calloc(1, sizeof *ui);
     if (!ui) return NULL;
-    memset(ui, 0, sizeof *ui);
     ui->visible = UI_FUI_PPT_VIEW_HOME;
 
     ui->screen = lv_obj_create(NULL);
@@ -347,7 +347,7 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
 void ui_fui_ppt_destroy(ui_fui_ppt_t *ui) {
     if (!ui) return;
     if (ui->screen) lv_obj_delete(ui->screen);
-    lv_mem_free(ui);
+    free(ui);
 }
 
 /* ============================================================ */
