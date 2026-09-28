@@ -8,15 +8,16 @@
 //
 // Layout math is extracted into ui_fui_ppt_home_layout() and
 // ui_fui_ppt_menu_row_rect() so the host test can validate bounds without
-// pulling in LVGL. The LVGL-only paths are wrapped in
-// `#ifdef LVGL_H_INCLUDE_SIMPLE` so the host test compiles without LVGL.
+// pulling in LVGL. The real widget code is guarded by ESP_PLATFORM (always
+// defined by the ESP-IDF build); host test builds compile the no-op stub
+// branch instead and only exercise the layout functions.
 
 #include "ui_fui_ppt.h"
 
 #include <string.h>
 
-#ifndef LVGL_H_INCLUDE_SIMPLE
-/* LVGL is present; declare the embedded fonts. */
+#ifdef ESP_PLATFORM
+/* Firmware build: LVGL is present; declare the embedded fonts. */
 LV_FONT_DECLARE(ui_font_kode_regular_11);
 LV_FONT_DECLARE(ui_font_kode_regular_13);
 LV_FONT_DECLARE(ui_font_kode_bold_13);
@@ -83,7 +84,7 @@ ui_fui_ppt_layout_t ui_fui_ppt_home_layout(void) {
     return l;
 }
 
-#ifdef LVGL_H_INCLUDE_SIMPLE
+#ifdef ESP_PLATFORM
 /* ============================================================ */
 /* Helpers                                                       */
 /* ============================================================ */
