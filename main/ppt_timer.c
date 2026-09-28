@@ -3,6 +3,7 @@
 #include "ppt_timer.h"
 
 #include <limits.h>
+#include <stdio.h>
 
 void ppt_timer_init(ppt_timer_t *t) {
     if (!t) return;

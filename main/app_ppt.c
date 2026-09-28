@@ -26,6 +26,7 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static const char *TAG = "app_ppt";
