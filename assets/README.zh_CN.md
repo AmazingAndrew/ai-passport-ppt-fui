@@ -15,6 +15,10 @@
 - 添加字库前评估 Flash 与内部 RAM 影响；ESP32-C3 无 PSRAM。
 - 不提交许可不允许分发的字库。
 
+本目录下的第三方字库：
+
+- [Kode Mono](fonts/kode_mono/README.md) — FUI 排版所用的等宽字库。
+
 ## 图片（images）
 
 可复用的源图与生成的显示资产放在 `images/`。

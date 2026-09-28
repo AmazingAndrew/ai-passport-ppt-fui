@@ -17,6 +17,10 @@ Store reusable font files and generated font sources in `fonts/`.
 - Check Flash and internal-RAM impact before adding a font; the ESP32-C3 has no PSRAM.
 - Do not commit fonts whose license does not permit redistribution.
 
+Third-party fonts in this directory:
+
+- [Kode Mono](fonts/kode_mono/README.md) — fonts used by the FUI layout.
+
 ## Images
 
 Store reusable source images and generated display assets in `images/`.
