@@ -1,0 +1,11 @@
+menu "FoloToy AI Passport — applications"
+
+config APP_PPT_ENABLED
+    bool "Enable the PPT controller FUI application"
+    default y
+    help
+        When enabled, main/main.c calls app_main_ppt() instead of the
+        hardware-test demo menu. The demo menu (main/demo_*.c) is kept
+        on disk but unused while this option is on.
+
+endmenu
