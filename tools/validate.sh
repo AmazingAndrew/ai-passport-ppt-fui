@@ -90,7 +90,7 @@ run_firmware_checks() (
     validation_build_dir="$(mktemp -d /tmp/ai-passport-firmware.XXXXXX)"
     trap 'case "${validation_build_dir}" in /tmp/ai-passport-firmware.*) rm -rf -- "${validation_build_dir}" ;; esac' EXIT
 
-    SDKCONFIG_DEFAULTS="${repo_root}/sdkconfig.defaults,${repo_root}/sdkconfig.defaults.ppt-controller" \
+    SDKCONFIG_DEFAULTS="${repo_root}/sdkconfig.defaults;${repo_root}/sdkconfig.defaults.ppt-controller" \
         idf.py -B "${validation_build_dir}" \
         -D "SDKCONFIG=${validation_build_dir}/sdkconfig" build
     idf.py -B "${validation_build_dir}" merge-bin \
