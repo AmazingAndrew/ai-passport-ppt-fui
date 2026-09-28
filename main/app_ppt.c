@@ -17,7 +17,6 @@
 #include "bsp_button.h"
 #include "bsp_display.h"
 #include "bsp_i2c.h"
-#include "bsp_lvgl.h"   /* provided by bsp_display.h transitively */
 #include "ppt_keys.h"
 #include "ppt_timer.h"
 #include "ui_fui_ppt.h"
