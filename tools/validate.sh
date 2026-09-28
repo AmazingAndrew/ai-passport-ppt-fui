@@ -29,6 +29,15 @@ run_static_checks() {
         -o "${test_dir}/test_ui_pixel_math"
     "${test_dir}/test_ui_pixel_math"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_ppt_timer.c main/ppt_timer.c \
+        -o "${test_dir}/test_ppt_timer"
+    "${test_dir}/test_ppt_timer"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -DLVGL_H_INCLUDE_SIMPLE \
+        -Itests/demo_stubs -Imain \
+        tests/test_ui_fui_ppt_layout.c main/ui_fui_ppt.c \
+        -o "${test_dir}/test_ui_fui_ppt_layout"
+    "${test_dir}/test_ui_fui_ppt_layout"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_demo_navigation.c main/demo_navigation.c \
         -o "${test_dir}/test_demo_navigation"
     "${test_dir}/test_demo_navigation"

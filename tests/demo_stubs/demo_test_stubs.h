@@ -76,6 +76,7 @@ int64_t esp_timer_get_time(void);
 typedef struct { int unused; } lv_obj_t;
 typedef struct { int unused; } lv_timer_t;
 typedef struct { int unused; } lv_font_t;
+typedef struct { int unused; } lv_chart_series_t;
 extern const lv_font_t lv_font_montserrat_14;
 #define LV_RADIUS_CIRCLE 1000
 #define LV_TEXT_ALIGN_CENTER 0
