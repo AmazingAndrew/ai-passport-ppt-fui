@@ -228,7 +228,7 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
                               l.main_panel.y + 40, &ui_font_kode_bold_21,
                               UI_FUI_PPT_ORANGE);
 
-    ui->action_label = mk_label(ui->screen, "READY",
+    ui->action_label = mk_label(ui->screen, "STANDBY",
                                 l.main_panel.x + 12, l.main_panel.y + 84,
                                 &ui_font_kode_bold_15, UI_FUI_PPT_MUTED);
     lv_obj_set_width(ui->action_label, l.main_panel.w - 24);
@@ -272,7 +272,7 @@ ui_fui_ppt_t *ui_fui_ppt_create(void) {
     lv_obj_set_style_radius(ui->link_chart, 0, 0);
     lv_obj_set_style_bg_color(ui->link_chart,
                               lv_color_hex(UI_FUI_PPT_RUST), 0);
-    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_30, 0);
+    lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_10, 0);
     lv_obj_set_style_border_width(ui->link_chart, 0, 0);
     lv_obj_set_style_line_opa(ui->link_chart, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui->link_chart, LV_OPA_COVER, LV_PART_ITEMS);
