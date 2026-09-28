@@ -20,6 +20,10 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
+#if CONFIG_APP_PPT_ENABLED
+#include "app_ppt.h"
+#endif
+
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
@@ -191,6 +195,9 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
 }
 
 void app_main(void) {
+#if CONFIG_APP_PPT_ENABLED
+    app_main_ppt();
+#else
     ESP_LOGI(TAG, "FoloToy AI Passport BSP demo 启动");
     esp_sleep_wakeup_cause_t wakeup = esp_sleep_get_wakeup_cause();
     if (wakeup != ESP_SLEEP_WAKEUP_UNDEFINED) {
@@ -239,4 +246,5 @@ void app_main(void) {
 
     ESP_LOGI(TAG, "就绪:Display=%d Button=%d Audio=%d Battery=%d",
              s_ok[0], s_ok[1], s_ok[2], s_ok[3]);
+#endif
 }

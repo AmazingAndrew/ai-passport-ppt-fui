@@ -11,6 +11,15 @@ idf_component_register(
          "demo_wifi.c"
          "demo_ble.c"
          "demo_low_power.c"
+         "app_ppt.c"
+         "ble_hid.c"
+         "ppt_timer.c"
+         "ui_fui_ppt.c"
+         "fonts/kode_mono/ui_font_kode_regular_11.c"
+         "fonts/kode_mono/ui_font_kode_regular_13.c"
+         "fonts/kode_mono/ui_font_kode_bold_13.c"
+         "fonts/kode_mono/ui_font_kode_bold_15.c"
+         "fonts/kode_mono/ui_font_kode_bold_21.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )
