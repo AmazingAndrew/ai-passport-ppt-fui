@@ -24,7 +24,7 @@ esp_err_t ble_hid_init(void);
 void ble_hid_key_press(uint8_t keycode);
 
 /**
- * @brief 重置蓝牙配对：擦除 NVS 中的绑定密钥并重启，重启后回到未配对状态重新广播。
+ * @brief 重置蓝牙配对：擦除 NVS 中的绑定密钥并重启，重启后回到未配对状态（按键触发配对广播）。
  * @note 调用后不会返回。
  */
 void ble_hid_reset_bonding(void);
@@ -48,6 +48,23 @@ void ble_hid_press_start_slideshow(void);
  * @return true 已连接并认证
  */
 bool ble_hid_is_connected(void);
+
+/**
+ * @brief 查询 NVS 中是否存在 BLE 绑定记录（配对过的宿主机）
+ * @return true 至少有一条绑定
+ */
+bool ble_hid_has_bond(void);
+
+/**
+ * @brief 是否正在广播（可被发现/回连）
+ */
+bool ble_hid_is_advertising(void);
+
+/**
+ * @brief 按需开始配对广播（幂等）。未绑定开机时不自动广播，用户按键触发。
+ * @return true 广播已在进行或本次成功启动；false 协议栈未就绪
+ */
+bool ble_hid_start_pairing(void);
 
 /**
  * @brief 触发一次对端 RSSI 读取并返回上一个有效样本（用于 UI 每秒轮询）

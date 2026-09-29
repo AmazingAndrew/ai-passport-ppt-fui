@@ -21,7 +21,6 @@
 #define UI_FUI_PPT_AMBER        0xFF9B35U
 #define UI_FUI_PPT_RED          0xFF4D6DU
 #define UI_FUI_PPT_GREEN        0x57C775U
-#define UI_FUI_PPT_BLUE         0x4F8FE0U
 #define UI_FUI_PPT_TEXT         UI_FUI_PPT_CREAM
 #define UI_FUI_PPT_MUTED        0x829097U
 
@@ -35,6 +34,7 @@ typedef enum {
     UI_FUI_PPT_ACTION_RESETTING,
     UI_FUI_PPT_ACTION_BLE_INIT_FAIL,
     UI_FUI_PPT_ACTION_BT_NOT_READY,
+    UI_FUI_PPT_ACTION_PAIRING,
 } ui_fui_ppt_action_t;
 
 typedef enum {
@@ -70,10 +70,24 @@ typedef struct {
     ui_fui_ppt_layout_rect_t host_link;
     ui_fui_ppt_layout_rect_t status_dot;
     ui_fui_ppt_layout_rect_t status_value;
-    ui_fui_ppt_layout_rect_t rssi_label;
-    ui_fui_ppt_layout_rect_t rssi_value;
-    ui_fui_ppt_layout_rect_t chart;
+    ui_fui_ppt_layout_rect_t signal_label;
+    ui_fui_ppt_layout_rect_t signal_value;
 } ui_fui_ppt_link_layout_t;
+
+/* User-facing link-quality buckets derived from RSSI. Plain words instead
+ * of dBm numbers or signal bars (v0.2.1 device feedback: unreadable).
+ * Mapping/text/color are pure functions outside the ESP guard so the host
+ * test pins every threshold. */
+typedef enum {
+    UI_FUI_PPT_LINK_NONE = 0,   /* no valid sample */
+    UI_FUI_PPT_LINK_WEAK,
+    UI_FUI_PPT_LINK_MEDIUM,
+    UI_FUI_PPT_LINK_STRONG,
+} ui_fui_ppt_link_quality_t;
+
+ui_fui_ppt_link_quality_t ui_fui_ppt_link_quality(int rssi_dbm);
+const char *ui_fui_ppt_link_quality_text(ui_fui_ppt_link_quality_t q);
+uint32_t    ui_fui_ppt_link_quality_color(ui_fui_ppt_link_quality_t q);
 
 typedef struct ui_fui_ppt_s ui_fui_ppt_t;
 
@@ -97,6 +111,8 @@ void                   ui_fui_ppt_set_link(ui_fui_ppt_t *ui,
                                            const char *text, uint32_t color);
 void                   ui_fui_ppt_set_battery(ui_fui_ppt_t *ui, int soc);
 void                   ui_fui_ppt_set_rssi(ui_fui_ppt_t *ui, int rssi_dbm);
+void                   ui_fui_ppt_set_hint(ui_fui_ppt_t *ui,
+                                           const char *text);
 void                   ui_fui_ppt_set_pairing_blink(ui_fui_ppt_t *ui,
                                                     bool bright);
 void                   ui_fui_ppt_set_arrow(ui_fui_ppt_t *ui, bool prev,

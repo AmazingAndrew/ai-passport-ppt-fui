@@ -118,6 +118,7 @@ static volatile bool s_auth_ok = false;     // 配对认证完成（Windows 要�
 static esp_bd_addr_t s_peer_bda;
 static volatile bool s_peer_valid = false;
 static volatile int8_t s_rssi = 127; /* 127 = no sample yet (BT spec value) */
+static volatile bool s_adv_active = false; /* HID stack is advertising */
 
 // ================================================================
 // BLE GAP 事件（配对认证 / 广播）
@@ -171,6 +172,16 @@ static void ble_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_p
 // ================================================================
 // 广播参数与加密配对配置（Just Works 绑定，无需输入 PIN）
 // ================================================================
+
+bool ble_hid_has_bond(void)
+{
+    int num = 0;
+    if (esp_ble_get_bond_device_list(&num, NULL) != ESP_OK) {
+        return false;
+    }
+    return num > 0;
+}
+
 static esp_err_t ble_hid_adv_init(void)
 {
     esp_err_t ret;
@@ -246,7 +257,11 @@ static esp_err_t ble_hid_adv_start(void)
         .channel_map        = ADV_CHNL_ALL,
         .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
     };
-    return esp_ble_gap_start_advertising(&adv_params);
+    esp_err_t err = esp_ble_gap_start_advertising(&adv_params);
+    if (err == ESP_OK) {
+        s_adv_active = true;
+    }
+    return err;
 }
 
 // ================================================================
@@ -259,13 +274,18 @@ static void hidd_event_callback(void *handler_args, esp_event_base_t base, int32
 
     switch (event) {
     case ESP_HIDD_START_EVENT:
-        ESP_LOGI(TAG, "HID START -> adv start");
-        ble_hid_adv_start();
+        if (ble_hid_has_bond()) {
+            ESP_LOGI(TAG, "HID START (bonded) -> adv start");
+            ble_hid_adv_start();
+        } else {
+            ESP_LOGI(TAG, "HID START: no bond -> wait for key press to pair");
+        }
         break;
 
     case ESP_HIDD_CONNECT_EVENT:
         ESP_LOGI(TAG, "HID CONNECT");
         s_connected = true;
+        s_adv_active = false;
         break;
 
     case ESP_HIDD_PROTOCOL_MODE_EVENT:
@@ -283,8 +303,11 @@ static void hidd_event_callback(void *handler_args, esp_event_base_t base, int32
                                                param->disconnect.reason));
         s_connected = false;
         s_auth_ok = false;
-        // 断线后重新广播，允许再次配对
-        ble_hid_adv_start();
+        s_adv_active = false;
+        // 已有绑定记录：重新广播便于宿主机回连；无绑定：继续等待按键触发配对
+        if (ble_hid_has_bond()) {
+            ble_hid_adv_start();
+        }
         break;
 
     default:
@@ -427,6 +450,22 @@ bool ble_hid_is_connected(void)
     return s_connected && s_auth_ok;
 }
 
+bool ble_hid_is_advertising(void)
+{
+    return s_adv_active;
+}
+
+bool ble_hid_start_pairing(void)
+{
+    if (s_hid_dev == NULL) {
+        return false;
+    }
+    if (s_adv_active) {
+        return true;
+    }
+    return ble_hid_adv_start() == ESP_OK;
+}
+
 bool ble_hid_poll_rssi(int8_t *rssi_out)
 {
     if (!ble_hid_is_connected() || !s_peer_valid || rssi_out == NULL) {
@@ -458,6 +497,7 @@ void ble_hid_reset_bonding(void)
 void ble_hid_stop(void)
 {
     esp_ble_gap_stop_advertising();
+    s_adv_active = false;
 }
 
 #else  /* CONFIG_BT_BLUEDROID_ENABLED */

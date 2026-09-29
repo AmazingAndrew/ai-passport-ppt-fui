@@ -3,6 +3,7 @@
 // safe margin around the bezel. No LVGL calls; pure math.
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../main/ui_fui_ppt.h"
 
@@ -74,22 +75,41 @@ int main(void) {
     no_overlap(&mi.timer,      &mi.action,  "timer", "action");
     no_overlap(&mi.action,     &mi.state,   "action", "state");
 
-    /* link panel internals: the v0.2.0 regression was "HOST LINK"/"RSSI"
-     * labels overlapping the status dot/text. Two rows must be disjoint
-     * and every element must fit inside the 224x64 panel. */
+    /* link panel internals: row A carries the host link status, row B the
+     * plain-word signal quality (the v0.2.1 chart was unreadable and is
+     * gone). Rows and elements must stay disjoint inside the 224x64 panel. */
     ui_fui_ppt_link_layout_t li = ui_fui_ppt_link_layout();
-    inside(&li.host_link,    &l.link_panel, "host_link");
-    inside(&li.status_dot,   &l.link_panel, "status_dot");
-    inside(&li.status_value, &l.link_panel, "status_value");
-    inside(&li.rssi_label,   &l.link_panel, "rssi_label");
-    inside(&li.rssi_value,   &l.link_panel, "rssi_value");
-    inside(&li.chart,        &l.link_panel, "chart");
-    no_overlap(&li.host_link,    &li.status_dot,   "host_link", "status_dot");
-    no_overlap(&li.status_dot,   &li.status_value, "status_dot", "status_value");
-    no_overlap(&li.rssi_label,   &li.rssi_value,   "rssi_label", "rssi_value");
-    no_overlap(&li.rssi_value,   &li.chart,        "rssi_value", "chart");
-    no_overlap(&li.host_link,    &li.rssi_label,   "rowA_label", "rowB_label");
-    no_overlap(&li.status_value, &li.chart,        "rowA_value", "rowB_chart");
+    inside(&li.host_link,     &l.link_panel, "host_link");
+    inside(&li.status_dot,    &l.link_panel, "status_dot");
+    inside(&li.status_value,  &l.link_panel, "status_value");
+    inside(&li.signal_label,  &l.link_panel, "signal_label");
+    inside(&li.signal_value,  &l.link_panel, "signal_value");
+    no_overlap(&li.host_link,    &li.status_dot,    "host_link", "status_dot");
+    no_overlap(&li.status_dot,   &li.status_value,  "status_dot", "status_value");
+    no_overlap(&li.signal_label, &li.signal_value,  "signal_label", "signal_value");
+    no_overlap(&li.host_link,    &li.signal_label,  "rowA_label", "rowB_label");
+    no_overlap(&li.status_value, &li.signal_label,  "rowA_value", "rowB_label");
+    /* "MEDIUM" is the longest quality word at bold_13 (~7.8 px/char) */
+    assert(li.signal_value.w >= 6 * 8);
+
+    /* link-quality buckets: every threshold edge + invalid samples */
+    assert(ui_fui_ppt_link_quality(-55)  == UI_FUI_PPT_LINK_STRONG);
+    assert(ui_fui_ppt_link_quality(-56)  == UI_FUI_PPT_LINK_MEDIUM);
+    assert(ui_fui_ppt_link_quality(-75)  == UI_FUI_PPT_LINK_MEDIUM);
+    assert(ui_fui_ppt_link_quality(-76)  == UI_FUI_PPT_LINK_WEAK);
+    assert(ui_fui_ppt_link_quality(-100) == UI_FUI_PPT_LINK_WEAK);
+    assert(ui_fui_ppt_link_quality(-101) == UI_FUI_PPT_LINK_NONE);
+    assert(ui_fui_ppt_link_quality(0)    == UI_FUI_PPT_LINK_NONE);
+    assert(ui_fui_ppt_link_quality(1)    == UI_FUI_PPT_LINK_NONE);
+    assert(ui_fui_ppt_link_quality(127)  == UI_FUI_PPT_LINK_NONE);
+    assert(strcmp(ui_fui_ppt_link_quality_text(UI_FUI_PPT_LINK_STRONG), "STRONG") == 0);
+    assert(strcmp(ui_fui_ppt_link_quality_text(UI_FUI_PPT_LINK_MEDIUM), "MEDIUM") == 0);
+    assert(strcmp(ui_fui_ppt_link_quality_text(UI_FUI_PPT_LINK_WEAK), "WEAK") == 0);
+    assert(strcmp(ui_fui_ppt_link_quality_text(UI_FUI_PPT_LINK_NONE), "--") == 0);
+    assert(ui_fui_ppt_link_quality_color(UI_FUI_PPT_LINK_STRONG) == UI_FUI_PPT_TEAL);
+    assert(ui_fui_ppt_link_quality_color(UI_FUI_PPT_LINK_MEDIUM) == UI_FUI_PPT_AMBER);
+    assert(ui_fui_ppt_link_quality_color(UI_FUI_PPT_LINK_WEAK)   == UI_FUI_PPT_RED);
+    assert(ui_fui_ppt_link_quality_color(UI_FUI_PPT_LINK_NONE)   == UI_FUI_PPT_MUTED);
 
     printf("test_ui_fui_ppt_layout: PASS\n");
     return 0;
