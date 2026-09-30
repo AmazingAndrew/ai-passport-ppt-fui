@@ -118,7 +118,12 @@ static volatile bool s_auth_ok = false;     // 配对认证完成（Windows 要�
 static esp_bd_addr_t s_peer_bda;
 static volatile bool s_peer_valid = false;
 static volatile int8_t s_rssi = 127; /* 127 = no sample yet (BT spec value) */
-static volatile bool s_adv_active = false; /* HID stack is advertising */
+static volatile bool s_adv_data_ready = false; /* ADV_DATA_SET_COMPLETE seen */
+static volatile bool s_hidd_started = false;   /* ESP_HIDD_START_EVENT seen */
+static volatile bool s_adv_pending = false;    /* pairing requested, waiting */
+static volatile bool s_adv_active = false;     /* ADV_START_COMPLETE success */
+
+static void ble_hid_try_start_adv(void);
 
 // ================================================================
 // BLE GAP 事件（配对认证 / 广播）
@@ -127,7 +132,20 @@ static void ble_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_p
 {
     switch (event) {
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
+        s_adv_data_ready = true;
+        ble_hid_try_start_adv();
+        break;
+
     case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
+        // s_adv_active 只反映控制器真实状态：API 返回 OK 仅代表命令入队
+        s_adv_active = (param->adv_start_cmpl.status == ESP_BT_STATUS_SUCCESS);
+        if (!s_adv_active) {
+            ESP_LOGW(TAG, "adv start failed: 0x%x", param->adv_start_cmpl.status);
+        }
+        break;
+
+    case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:
+        s_adv_active = false;
         break;
 
     case ESP_GAP_BLE_AUTH_CMPL_EVT:
@@ -257,11 +275,23 @@ static esp_err_t ble_hid_adv_start(void)
         .channel_map        = ADV_CHNL_ALL,
         .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
     };
-    esp_err_t err = esp_ble_gap_start_advertising(&adv_params);
-    if (err == ESP_OK) {
-        s_adv_active = true;
+    return esp_ble_gap_start_advertising(&adv_params);
+}
+
+// 仅当 HID 服务已启动且广播数据已配置完成时才真正开广播；
+// 用户过早按 OK 时 s_adv_pending 保持置位，由后续事件自动补开。
+static void ble_hid_try_start_adv(void)
+{
+    if (!s_hidd_started || !s_adv_data_ready) {
+        return;
     }
-    return err;
+    if (s_connected || s_adv_active) {
+        s_adv_pending = false;
+        return;
+    }
+    if (ble_hid_adv_start() == ESP_OK) {
+        s_adv_pending = false; /* 最终状态由 ADV_START_COMPLETE 事件确认 */
+    }
 }
 
 // ================================================================
@@ -274,11 +304,12 @@ static void hidd_event_callback(void *handler_args, esp_event_base_t base, int32
 
     switch (event) {
     case ESP_HIDD_START_EVENT:
-        if (ble_hid_has_bond()) {
-            ESP_LOGI(TAG, "HID START (bonded) -> adv start");
-            ble_hid_adv_start();
+        s_hidd_started = true;
+        if (ble_hid_has_bond() || s_adv_pending) {
+            ESP_LOGI(TAG, "HID START (bonded/pending) -> adv start");
+            ble_hid_try_start_adv();
         } else {
-            ESP_LOGI(TAG, "HID START: no bond -> wait for key press to pair");
+            ESP_LOGI(TAG, "HID START: no bond -> wait for OK key to pair");
         }
         break;
 
@@ -286,6 +317,7 @@ static void hidd_event_callback(void *handler_args, esp_event_base_t base, int32
         ESP_LOGI(TAG, "HID CONNECT");
         s_connected = true;
         s_adv_active = false;
+        s_adv_pending = false;
         break;
 
     case ESP_HIDD_PROTOCOL_MODE_EVENT:
@@ -304,9 +336,9 @@ static void hidd_event_callback(void *handler_args, esp_event_base_t base, int32
         s_connected = false;
         s_auth_ok = false;
         s_adv_active = false;
-        // 已有绑定记录：重新广播便于宿主机回连；无绑定：继续等待按键触发配对
-        if (ble_hid_has_bond()) {
-            ble_hid_adv_start();
+        // 已有绑定记录或用户本次开机内请求过配对：重新广播；否则等待 OK 键
+        if (ble_hid_has_bond() || s_adv_pending) {
+            ble_hid_try_start_adv();
         }
         break;
 
@@ -460,10 +492,9 @@ bool ble_hid_start_pairing(void)
     if (s_hid_dev == NULL) {
         return false;
     }
-    if (s_adv_active) {
-        return true;
-    }
-    return ble_hid_adv_start() == ESP_OK;
+    s_adv_pending = true;
+    ble_hid_try_start_adv();
+    return true;
 }
 
 bool ble_hid_poll_rssi(int8_t *rssi_out)

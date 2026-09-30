@@ -35,6 +35,7 @@ typedef enum {
     UI_FUI_PPT_ACTION_BLE_INIT_FAIL,
     UI_FUI_PPT_ACTION_BT_NOT_READY,
     UI_FUI_PPT_ACTION_PAIRING,
+    UI_FUI_PPT_ACTION_OK_TO_PAIR,
 } ui_fui_ppt_action_t;
 
 typedef enum {

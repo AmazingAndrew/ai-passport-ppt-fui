@@ -175,7 +175,8 @@ static uint32_t action_color(ui_fui_ppt_action_t a) {
         case UI_FUI_PPT_ACTION_START:  return UI_FUI_PPT_ORANGE;
         case UI_FUI_PPT_ACTION_EXIT:   return UI_FUI_PPT_AMBER;
         case UI_FUI_PPT_ACTION_RESET_ARM:
-        case UI_FUI_PPT_ACTION_BT_NOT_READY: return UI_FUI_PPT_AMBER;
+        case UI_FUI_PPT_ACTION_BT_NOT_READY:
+        case UI_FUI_PPT_ACTION_OK_TO_PAIR:   return UI_FUI_PPT_AMBER;
         case UI_FUI_PPT_ACTION_RESETTING:
         case UI_FUI_PPT_ACTION_BLE_INIT_FAIL: return UI_FUI_PPT_RED;
         case UI_FUI_PPT_ACTION_PAIRING:       return UI_FUI_PPT_MAGENTA;
@@ -195,8 +196,9 @@ static const char *action_text(ui_fui_ppt_action_t a) {
         case UI_FUI_PPT_ACTION_BLE_INIT_FAIL:  return "BLE INIT FAIL";
         case UI_FUI_PPT_ACTION_BT_NOT_READY:   return "BT NOT READY";
         case UI_FUI_PPT_ACTION_PAIRING:        return "PAIRING...";
+        case UI_FUI_PPT_ACTION_OK_TO_PAIR:     return "PRESS OK";
         case UI_FUI_PPT_ACTION_READY:
-        default:                               return "READY";
+        default:                               return "STANDBY";
     }
 }
 

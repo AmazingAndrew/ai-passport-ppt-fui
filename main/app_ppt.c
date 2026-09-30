@@ -32,7 +32,9 @@
 static const char *TAG = "app_ppt";
 
 static const char *const HINT_NORMAL = "UP PREV | DOWN NEXT | OK START";
-static const char *const HINT_PAIR   = "PRESS KEY TO PAIR";
+static const char *const HINT_PAIR   = "PRESS OK TO PAIR";
+static const char *const HINT_SEARCH = "SEARCH \"PPT-Remote\" ON PC";
+#define DEVICE_NAME_UI "PPT-Remote"   /* must match DEVICE_NAME in ble_hid.c */
 
 static ui_fui_ppt_t *s_ui = NULL;
 static ppt_timer_t   s_timer;
@@ -49,9 +51,24 @@ static unsigned  s_rssi_div = 0;
 static uint8_t   s_arrow_ticks = 0;
 static bool      s_arrow_prev = false;
 
-static void update_action(ui_fui_ppt_action_t a) {
-    if (!bsp_lvgl_lock(500)) return;
+/* action line = transient feedback (4 s) overlaid on a phase display that
+ * is derived from the live link state — PAIRING persists as long as the
+ * radio is really advertising, and ends the moment the link comes up. */
+static volatile ui_fui_ppt_action_t s_transient = UI_FUI_PPT_ACTION_READY;
+static volatile TickType_t s_transient_until = 0;
+static int s_action_shown = -1;
+
+static void show_action(ui_fui_ppt_action_t a) {
+    if ((int)a == s_action_shown) return;
+    s_action_shown = (int)a;
     ui_fui_ppt_set_action(s_ui, a);
+}
+
+static void update_action(ui_fui_ppt_action_t a) {
+    s_transient = a;
+    s_transient_until = xTaskGetTickCount() + pdMS_TO_TICKS(4000);
+    if (!bsp_lvgl_lock(500)) return;
+    show_action(a);
     bsp_lvgl_unlock();
 }
 
@@ -128,16 +145,33 @@ static void status_tick(lv_timer_t *t) {
         s_rssi_div = 0;
         ui_fui_ppt_set_rssi(s_ui, 1); /* invalid -> "--" quality */
         if (adv) {
-            show_state("PAIRING", UI_FUI_PPT_MAGENTA);
+            /* advertise the searchable name where "PAIRING" used to repeat
+             * the action line */
+            show_state(DEVICE_NAME_UI, UI_FUI_PPT_CREAM);
             ui_fui_ppt_set_pairing_blink(s_ui, s_blink_half);
         } else {
-            /* unbonded boot: radio idle until a key press starts pairing */
+            /* unbonded boot: radio idle until OK is pressed */
             show_state("NO PAIR", UI_FUI_PPT_MUTED);
             ui_fui_ppt_set_pairing_blink(s_ui, true);
         }
     }
 
-    const char *hint = (connected || adv) ? HINT_NORMAL : HINT_PAIR;
+    /* action line: phase display unless a transient feedback is on screen */
+    ui_fui_ppt_action_t phase = (!connected && adv)
+        ? UI_FUI_PPT_ACTION_PAIRING : UI_FUI_PPT_ACTION_READY;
+    if (s_transient_until != 0) {
+        bool done = xTaskGetTickCount() > s_transient_until ||
+                    (phase == UI_FUI_PPT_ACTION_READY &&
+                     s_transient == UI_FUI_PPT_ACTION_PAIRING);
+        if (done) {
+            s_transient_until = 0;
+            s_transient = phase;
+        }
+    }
+    if (s_transient_until == 0) show_action(phase);
+
+    const char *hint = connected ? HINT_NORMAL
+                       : (adv ? HINT_SEARCH : HINT_PAIR);
     if (hint != s_hint_shown) {
         s_hint_shown = hint;
         ui_fui_ppt_set_hint(s_ui, hint);
@@ -155,15 +189,21 @@ static void ppt_tick(lv_timer_t *t) {
     update_timer_label();
 }
 
-/* key press while disconnected: start (or continue) pairing advertising on
- * demand instead of just complaining — first press on an unbonded device
- * is what switches the radio into discoverable mode. */
+/* OK is the single pairing entry point: it asks the BLE layer to advertise
+ * (queued automatically if the stack is still warming up). UP/DOWN never
+ * start pairing — idle they point the user at OK, pairing they just
+ * re-confirm the phase. */
 static void pair_or_notify(void) {
     if (ble_hid_start_pairing()) {
         update_action(UI_FUI_PPT_ACTION_PAIRING);
     } else {
         update_action(UI_FUI_PPT_ACTION_BT_NOT_READY);
     }
+}
+
+static void not_ready_hint(void) {
+    update_action(ble_hid_is_advertising() ? UI_FUI_PPT_ACTION_PAIRING
+                                           : UI_FUI_PPT_ACTION_OK_TO_PAIR);
 }
 
 static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
@@ -174,7 +214,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
     case BSP_BTN_UP:
         if (ev == BSP_BTN_CLICK) {
             if (!ble_hid_is_connected()) {
-                pair_or_notify();
+                not_ready_hint();
             } else {
                 ble_hid_key_press(HID_KEY_LEFT_ARROW);
                 update_action(UI_FUI_PPT_ACTION_PREV);
@@ -188,7 +228,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
     case BSP_BTN_DOWN:
         if (ev == BSP_BTN_CLICK) {
             if (!ble_hid_is_connected()) {
-                pair_or_notify();
+                not_ready_hint();
             } else {
                 ble_hid_key_press(HID_KEY_RIGHT_ARROW);
                 update_action(UI_FUI_PPT_ACTION_NEXT);

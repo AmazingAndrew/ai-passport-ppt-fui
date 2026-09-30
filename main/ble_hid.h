@@ -56,13 +56,15 @@ bool ble_hid_is_connected(void);
 bool ble_hid_has_bond(void);
 
 /**
- * @brief 是否正在广播（可被发现/回连）
+ * @brief 是否正在广播（仅由 ADV_START_COMPLETE 成功事件置位，反映真实状态）
  */
 bool ble_hid_is_advertising(void);
 
 /**
- * @brief 按需开始配对广播（幂等）。未绑定开机时不自动广播，用户按键触发。
- * @return true 广播已在进行或本次成功启动；false 协议栈未就绪
+ * @brief 请求开始配对广播（幂等）。未绑定开机不自动广播；若协议栈尚未就绪，
+ *        请求会被挂起，HID/广播数据就绪后自动补开。UI 应结合
+ *        ble_hid_is_advertising() 展示真实广播状态。
+ * @return true 请求已受理；false 协议栈未初始化
  */
 bool ble_hid_start_pairing(void);
 
